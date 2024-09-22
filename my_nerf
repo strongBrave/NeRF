@@ -1,0 +1,84 @@
+import torch
+import torch.nn as nn
+import numpy as np
+from tqdm import tqdm
+import matplotlib.pyplot as plt
+from torch.utils.data import DataLoader
+
+class Embedding(nn.Module):
+    def __init__(self, in_channels, N_freqs):
+        super(Embedding, self).__init__()
+        self.in_channels = in_channels
+        self.N_freqs = N_freqs
+        self.funcs = [torch.sin, torch.cos]
+        self.len = in_channels * (len(self.funcs) * N_freqs + 1)
+
+        self.freq_bands = torch.linspace(2 ** 0, 2 ** (self.N_freqs - 1), self.N_freqs)
+
+    def forward(self, x):
+        """
+        
+        Inputs:
+            x: [batch_size, self.in_channels]
+        Returns:
+            embedded_x = [batch_size, self.len]
+        """
+        
+        embedded_x = [x]
+        for f in self.freq_bands:
+            for funcs in self.funcs:
+                embedded_x.append(funcs(f * x))
+        embedded_x = torch.cat(embedded_x, -1)
+        return embedded_x
+    
+class NerfModel(nn.Module):
+    def __init__(self, n_embbed_coord=63, n_embbed_dir=27, n_hidden=256):
+        super(NerfModel, self).__init__()
+
+        self.n_hidden = n_hidden
+        self.n_input = n_embbed_coord
+
+        self.pre_block1 = nn.Sequential(
+            nn.Linear(n_embbed_coord, n_hidden), nn.ReLU(),
+            nn.Linear(n_hidden, n_hidden), nn.ReLU(),
+            nn.Linear(n_hidden, n_hidden), nn.ReLU(),
+            nn.Linear(n_hidden, n_hidden), nn.ReLU()
+        )
+
+        self.pre_block2 = nn.Sequential(
+            nn.Linear(n_hidden + n_embbed_coord, n_hidden), nn.ReLU(),
+            nn.Linear(n_hidden, n_hidden), nn.ReLU(),
+            nn.Linear(n_hidden, n_hidden), nn.ReLU(),
+            nn.Linear(n_hidden, n_hidden), nn.ReLU(),
+        )
+
+        self.sigma_block = nn.Linear(n_hidden, n_hidden + 1)
+
+        self.color_block = nn.Sequential(
+            nn.Linear(n_hidden + n_embbed_dir, n_hidden // 2), nn.ReLU(),
+            nn.Linear(n_hidden // 2, 3), nn.Sigmoid()
+        )
+        self.relu = nn.ReLU()
+
+    def forward(self, o, d):
+        """
+        Inputs:
+            o: [batch_size, n_embbed_coord]  embbed origin
+            d: [batch_size, n_embbed_dir] embbed ray direction
+        outputs
+            sigma: [batch_size, ] density
+            colorl: [batch_size, 3] color
+
+        """
+
+        inter_x1 = self.pre_block1(o)
+
+        inter_x2 = self.pre_block2e(torch.cat([inter_x1, o], -1))
+
+        inter_x3 = self.sigma_block(inter_x2)
+
+        features, sigma = inter_x3[:, :-1], self.relu(inter_x3[:, -1])
+
+        color = self.color_block(torch.cat([features, d], -1))
+
+        return sigma, color
