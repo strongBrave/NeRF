@@ -226,7 +226,7 @@ def create_gif(image_folder, output_gif, duration=0.1):
         images.append(imageio.imread(img_path))
     
     # Save as gif
-    imageio.mimsave(output_gif, images, duration=duration)
+    imageio.mimsave(output_gif, images, duration=duration, loop=0)
 
 
 # Single test
@@ -234,24 +234,26 @@ def single_test(model, dataset):
     test(model, hn=2, hf=6, dataset=dataset, current_epoch=1, img_index=2, chunk_size=10, bins=192, H=400, W=400)
 
 if __name__ == "__main__":
-    device = 'cuda'
+    # device = 'cuda'
 
-    L = [10, 4]
-    L_after = [63, 27]
+    # L = [10, 4]
+    # L_after = [63, 27]
 
-    train_dataset = torch.from_numpy(np.load("data/training_data.pkl", allow_pickle=True))
-    test_dataset = torch.from_numpy(np.load("data/testing_data.pkl", allow_pickle=True))
+    # train_dataset = torch.from_numpy(np.load("data/training_data.pkl", allow_pickle=True))
+    # test_dataset = torch.from_numpy(np.load("data/testing_data.pkl", allow_pickle=True))
 
-    model = NerfModel(L_after[0], L_after[1], 256).to(device)
-    embedding_model = [Embedding(3, l).to(device) for l in L]
-    criterion = nn.MSELoss(reduction='sum')
+    # model = NerfModel(L_after[0], L_after[1], 256).to(device)
+    # embedding_model = [Embedding(3, l).to(device) for l in L]
+    # criterion = nn.MSELoss(reduction='sum')
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=5e-4)
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[2, 4, 8], gamma=0.5)
-    dataloader = DataLoader(train_dataset, batch_size=1024, shuffle=True)
+    # optimizer = torch.optim.Adam(model.parameters(), lr=5e-4)
+    # scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[2, 4, 8], gamma=0.5)
+    # dataloader = DataLoader(train_dataset, batch_size=1024, shuffle=True)
 
-    # load_path = "checkpoints/"
-    # load_model(model, optimizer, scheduler, )
+    # # load_path = "checkpoints/"
+    # # load_model(model, optimizer, scheduler, )
 
-    train(model, embedding_model, criterion, optimizer, scheduler, dataloader, device, epochs=10,
-          hn=2, hf=6, bins=192, H=400, W=400)
+    # train(model, embedding_model, criterion, optimizer, scheduler, dataloader, device, epochs=10,
+    #       hn=2, hf=6, bins=192, H=400, W=400)
+    
+    create_gif("./novel_views/6", "nerf_animation.gif", duration=0.1)
